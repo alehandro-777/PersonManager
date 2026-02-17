@@ -85,6 +85,10 @@ namespace PersonManager.API.Controllers
         /// <returns>NoContent on success</returns>
         // PUT: api/persons/1
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdatePerson(int id, [FromBody] PersonUpdateDto dto)
         {
             if (dto == null)

@@ -1,4 +1,4 @@
-﻿using PersonManager.API.DTO;
+﻿using PersonManager.UI.Api;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

@@ -1,5 +1,5 @@
 using Newtonsoft.Json;
-using PersonManager.API.DTO;
+using PersonManager.UI.Api;
 using System;
 using System.Net.Http;
 using System.Text;
@@ -8,49 +8,23 @@ namespace PersonManager.WinForms
 {
     public partial class MainForm : Form
     {
-        private readonly HttpClient _httpClient = new HttpClient();
-
+        private readonly Client _httpClient = new Client("https://localhost:7045");
         public MainForm()
         {
             InitializeComponent();
-
-            //dataGridView1.AutoGenerateColumns = false;
-
             dataGridView1.CellContentClick += dataGridViewPersons_CellContentClick;
-
-            _httpClient.BaseAddress = new Uri("https://localhost:7045/");
         }
 
         private async void btnLoad_Click(object sender, EventArgs e)
         {
             string nameFilter = txtSearchName.Text.Trim();
-            string url = "api/persons";
-
-            if (!string.IsNullOrEmpty(nameFilter))
-                url += $"?name={nameFilter}";
 
             try
             {
                 // Make HTTP request
-                var response = await _httpClient.GetAsync(url);
-
-                // Check for successful status
-                if (response.IsSuccessStatusCode)
-                {
-                    var json = await response.Content.ReadAsStringAsync();
-
-                    // Deserialize
-                    var persons = JsonConvert.DeserializeObject<List<PersonListDto>>(json);
-
-                    dataGridView1.DataSource = persons;
-
-                    this.AddDetailsButton();
-                }
-                else
-                {
-                    MessageBox.Show($"Server error: {(int)response.StatusCode} {response.ReasonPhrase}",
-                                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                var persons = await _httpClient.PersonsAllAsync(nameFilter);
+                dataGridView1.DataSource = persons;
+                this.AddDetailsButton();
             }
             catch (HttpRequestException ex)
             {
@@ -91,32 +65,12 @@ namespace PersonManager.WinForms
             try
             {
                 // Send HTTP request
-                var response = await _httpClient.GetAsync($"api/persons/{personId}");
-
-                // Check if response is successful
-                if (response.IsSuccessStatusCode)
+                PersonDetailDto? personDetail = await _httpClient.PersonsGETAsync(personId);
+                if (personDetail != null)
                 {
-                    var json = await response.Content.ReadAsStringAsync();
-
-                    // Deserialize JSON
-                    var personDetail = JsonConvert.DeserializeObject<PersonDetailDto>(json);
-
-                    if (personDetail != null)
-                    {
-                        // Open details form
-                        var detailsForm = new PersonDetailsForm(personDetail);
-                        detailsForm.ShowDialog();
-                    }
-                    else
-                    {
-                        MessageBox.Show("No details found for this person.",
-                                        "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show($"Server error: {(int)response.StatusCode} {response.ReasonPhrase}",
-                                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    // Open details form
+                    var detailsForm = new PersonDetailsForm(personDetail);
+                    detailsForm.ShowDialog();
                 }
             }
             catch (HttpRequestException ex)
@@ -146,21 +100,16 @@ namespace PersonManager.WinForms
 
             if (selectedPerson == null) return;
 
-            var updateDto = new PersonUpdateDto
+            PersonUpdateDto? updateDto = new PersonUpdateDto
             {
                 Name = selectedPerson.Name,
                 Vorname = selectedPerson.Vorname
             };
 
-            var json = JsonConvert.SerializeObject(updateDto);
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
             try
             {
-                var response = await _httpClient.PutAsync($"api/persons/{selectedPerson.PersonId}", content);
-
-                if (!response.IsSuccessStatusCode)
-                    MessageBox.Show("Fehler beim Speichern der Person");
+                await _httpClient.PersonsPUTAsync(selectedPerson.PersonId, updateDto);
             }
             catch (Exception ex)
             {
